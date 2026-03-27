@@ -1,52 +1,18 @@
-def create_filters(sigma):
-    
-    n = int(np.ceil(3*sigma)*2+1) #odd number guaranteed
+def featuresHOG(I, points):
+    I = I.astype(float)/255
+    N = points.shape[0]
+    cells = np.array([2,2])
+    nbins = 9
+    ovrlp = .5
+    [h,w] = I.shape
 
-    #2D Gaussian
-    G_1d = cv2.getGaussianKernel(n, sigma)
-    G_2d = G_1d @ G_1d.T
-
-    #LoG creation
-    x, y = np.meshgrid(np.arange(-(n//2), n//2+1), np.arange(-(n//2), n//2+1))
-    LoG = -(1/(np.pi * sigma**4)) * (1 - ((x**2 + y**2) / (2 * sigma**2))) * np.exp(-(x**2 + y**2) / (2 * sigma**2))
-
-    #Normalization of LoG
-    LoG = LoG / np.sum(np.abs(LoG)) #magnitude normalization. keep values of image in proper range and different sigma comparable
-    LoG -= np.mean(LoG) #sum=0, no add or remove light
-
-    return G_1d, G_2d, LoG
-
-def MultiscaleCornerDetect(I, sigma_0, ro_0, k, theta_corn, s, N):
-
-    if len(I.shape)==3:
-        I_gray = cv2.cvtColor(I, cv2.COLOR_BGR2GRAY)
-    else:
-        I_gray = I
-        
-    I_float = I_gray/255.0
-    
-    sigma_vector = [s**i*sigma_0 for i in range(N)] #different sigma values
-    ro_vector = [s**i*ro_0 for i in range(N)]       #different ro values
-
-    final_corners = []
-    LoG_table = [] #save LoG(x, sigma_i)
-    
-    #compute LoG(x, sigma_i)
+    desc = []
     for i in range(N):
-        _, _, LoG = create_filters(sigma_vector[i])
-        result = cv2.filter2D(I_float, cv2.CV_64F, LoG)
-        LoG_table.append(np.abs(result) * (sigma_vector[i]**2))
+        pi = int(points[i,1])
+        pj = int(points[i,0])
+        scale = points[i,2]
+        rad = int(round(5*scale))
+        img_patch = I[max(0,pi-rad):min(pi+rad,h)+1,max(0,pj-rad):min(pj+rad,w)+1]
+        desc.append(simple_hog(img_patch,nbins,cells,ovrlp))
 
-    for i in range(N):
-        #2.2.1
-        kp_data = CornersDetect(I=I_gray, sigma=sigma_vector[i], ro=ro_vector[i], k=k, theta_corn=theta_corn)
-        #2.2.2
-        for x, y, sigma in kp_data:
-            current_val = LoG_table[i][int(round(y)), int(round(x))]
-            next_val = LoG_table[i+1][int(round(y)), int(round(x))] if i+1<N else -1
-            prev_val = LoG_table[i-1][int(round(y)), int(round(x))] if i-1>-1 else -1
-
-            if current_val>next_val and current_val>prev_val:
-                final_corners.append([x,y,sigma])
-       
-    return np.array(final_corners)
+    return np.float32(np.array(desc))
