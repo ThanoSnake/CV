@@ -1,3 +1,21 @@
+def create_filters(sigma):
+    
+    n = int(np.ceil(3*sigma)*2+1) #odd number guaranteed
+
+    #2D Gaussian
+    G_1d = cv2.getGaussianKernel(n, sigma)
+    G_2d = G_1d @ G_1d.T
+
+    #LoG creation
+    x, y = np.meshgrid(np.arange(-(n//2), n//2+1), np.arange(-(n//2), n//2+1))
+    LoG = -(1/(np.pi * sigma**4)) * (1 - ((x**2 + y**2) / (2 * sigma**2))) * np.exp(-(x**2 + y**2) / (2 * sigma**2))
+
+    #Normalization of LoG
+    LoG = LoG / np.sum(np.abs(LoG)) #magnitude normalization. keep values of image in proper range and different sigma comparable
+    LoG -= np.mean(LoG) #sum=0, no add or remove light
+
+    return G_1d, G_2d, LoG
+
 def MultiscaleCornerDetect(I, sigma_0, ro_0, k, theta_corn, s, N):
 
     if len(I.shape)==3:
