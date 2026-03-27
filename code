@@ -1,57 +1,65 @@
-def Harris_Stephens(I, sigma, rho, k, theta_c, plots=False, img_name=""):
+def Harris_Laplacian(I, sigma, rho, k, theta_c, s, N):
 
-#-----------------2.1.1-----------------#
-    ns = int(np.ceil(3*sigma)*2+1)
-    nr = int(np.ceil(3*rho)*2+1)
-             
-    gx = cv2.getGaussianKernel(ns, sigma)
-    gy = cv2.getGaussianKernel(ns, sigma)
-    Gs = gx * np.transpose(gy)
+#-----------------2.2.1-----------------#
+    points_per_scale = []
+    L_norm = []
+    for i in range(N):
+        #σi,ρi
+        sigma_i = sigma*(s**i)
+        rho_i = rho*(s**i)
 
-    gx = cv2.getGaussianKernel(nr, rho)
-    gy = cv2.getGaussianKernel(nr, rho)
-    Gr = gx * np.transpose(gy)
+        points_i = Harris_Stephens(I, sigma_i, rho_i, k, theta_c)
+        points_per_scale.append(points_i)
 
-    Is = cv2.filter2D(src=I, ddepth=-1, kernel=Gs)
-    dIs_y, dIs_x = np.gradient(Is)
+ #-----------------2.2.2-----------------#
+        ns = int(np.ceil(3*sigma_i)*2+1)
+        g = cv2.getGaussianKernel(ns, sigma_i)
+        Gs = g * np.transpose(g)
+        half = (ns-1)/2
+        coords = np.arange(-half, half+1)
+        x, y = np.meshgrid(coords, coords)
+        factor = (x**2 + y**2 -2*sigma_i**2)/sigma_i**4
+        LoG = factor*Gs
 
-    J1 = cv2.filter2D(src=dIs_x*dIs_x, ddepth=-1, kernel=Gr)
-    J2 = cv2.filter2D(src=dIs_x*dIs_y, ddepth=-1, kernel=Gr)
-    J3 = cv2.filter2D(src=dIs_y*dIs_y, ddepth=-1, kernel=Gr)
+        #Normalized LoG(x,σi)
+        L = cv2.filter2D(src=I, ddepth=-1, kernel=LoG)
+        Li_norm = (sigma_i**2)*np.abs(L)
+        L_norm.append(Li_norm)
 
-#-----------------2.1.2-----------------#
-    sq_root = np.sqrt( (J1-J3)**2 + 4*J2**2 )
-    lamda_pos = 0.5*(J1+J3+sq_root)
-    lamda_neg = 0.5*(J1+J3-sq_root)
+    final_points_list = []
+    for i in range(N):
+        points = points_per_scale[i]
 
-    if plots:
-        plt.figure(figsize=(18,6))
-        plt.suptitle(f"Eigenvalues Analysis: \"{img_name}\"" if img_name else "Eigenvalues Analysis:")
-        plt.subplot(1,2,1)
-        plt.imshow(lamda_pos, cmap='gray')
-        plt.title("λ+")
-        plt.axis('off')
-    
-        plt.subplot(1,2,2)
-        plt.imshow(lamda_neg, cmap='gray')
-        plt.title("λ-")
-        plt.axis('off')
+        #if len(points) == 0:
+            #continue
+            
+        x_coords = points[:,0].astype(int)
+        y_coords = points[:,1].astype(int)
 
-#-----------------2.1.3-----------------#
-    R = lamda_neg*lamda_pos - k*(lamda_neg + lamda_pos)**2
+        if i == 0 or i == N-1:
+            if i == 0:
+                val_cur = L_norm[i][y_coords, x_coords]
+                val_next = L_norm[i+1][y_coords, x_coords]
 
-    #---Σ1---#
-    B_sq = disk_strel(ns)
-    Cond1 = ( R==cv2.dilate(R,B_sq) )
+                mask = (val_cur > val_next)
+                final_points_list.append(points[mask])
+            else:
+                val_prev = L_norm[i-1][y_coords, x_coords]
+                val_cur = L_norm[i][y_coords, x_coords]
 
-    #---Σ2---#
-    Cond2 = ( R>theta_c*R.max() )
+                mask = (val_cur > val_prev)
+                final_points_list.append(points[mask])
+        else:
+            val_prev = L_norm[i-1][y_coords, x_coords]
+            val_cur = L_norm[i][y_coords, x_coords]
+            val_next = L_norm[i+1][y_coords, x_coords]
 
-    #Preparation of output
-    corners = Cond1 & Cond2
-    y_coords, x_coords = np.where(corners)
-    N = len(x_coords)
-    scale = np.ones(N)*sigma
-    points = np.column_stack((x_coords, y_coords, scale))
+            mask = (val_cur > val_prev) & (val_cur > val_next)
+            final_points_list.append(points[mask])
 
-    return points
+    if len(final_points_list) > 0:
+        total_points = np.vstack(final_points_list)
+    else:
+        total_points = np.empty((0,3))
+
+    return total_points   
