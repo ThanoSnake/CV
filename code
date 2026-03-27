@@ -1,65 +1,34 @@
-def Harris_Laplacian(I, sigma, rho, k, theta_c, s, N):
+def MultiscaleCornerDetect(I, sigma_0, ro_0, k, theta_corn, s, N):
 
-#-----------------2.2.1-----------------#
-    points_per_scale = []
-    L_norm = []
-    for i in range(N):
-        #σi,ρi
-        sigma_i = sigma*(s**i)
-        rho_i = rho*(s**i)
-
-        points_i = Harris_Stephens(I, sigma_i, rho_i, k, theta_c)
-        points_per_scale.append(points_i)
-
- #-----------------2.2.2-----------------#
-        ns = int(np.ceil(3*sigma_i)*2+1)
-        g = cv2.getGaussianKernel(ns, sigma_i)
-        Gs = g * np.transpose(g)
-        half = (ns-1)/2
-        coords = np.arange(-half, half+1)
-        x, y = np.meshgrid(coords, coords)
-        factor = (x**2 + y**2 -2*sigma_i**2)/sigma_i**4
-        LoG = factor*Gs
-
-        #Normalized LoG(x,σi)
-        L = cv2.filter2D(src=I, ddepth=-1, kernel=LoG)
-        Li_norm = (sigma_i**2)*np.abs(L)
-        L_norm.append(Li_norm)
-
-    final_points_list = []
-    for i in range(N):
-        points = points_per_scale[i]
-
-        #if len(points) == 0:
-            #continue
-            
-        x_coords = points[:,0].astype(int)
-        y_coords = points[:,1].astype(int)
-
-        if i == 0 or i == N-1:
-            if i == 0:
-                val_cur = L_norm[i][y_coords, x_coords]
-                val_next = L_norm[i+1][y_coords, x_coords]
-
-                mask = (val_cur > val_next)
-                final_points_list.append(points[mask])
-            else:
-                val_prev = L_norm[i-1][y_coords, x_coords]
-                val_cur = L_norm[i][y_coords, x_coords]
-
-                mask = (val_cur > val_prev)
-                final_points_list.append(points[mask])
-        else:
-            val_prev = L_norm[i-1][y_coords, x_coords]
-            val_cur = L_norm[i][y_coords, x_coords]
-            val_next = L_norm[i+1][y_coords, x_coords]
-
-            mask = (val_cur > val_prev) & (val_cur > val_next)
-            final_points_list.append(points[mask])
-
-    if len(final_points_list) > 0:
-        total_points = np.vstack(final_points_list)
+    if len(I.shape)==3:
+        I_gray = cv2.cvtColor(I, cv2.COLOR_BGR2GRAY)
     else:
-        total_points = np.empty((0,3))
+        I_gray = I
+        
+    I_float = I_gray/255.0
+    
+    sigma_vector = [s**i*sigma_0 for i in range(N)] #different sigma values
+    ro_vector = [s**i*ro_0 for i in range(N)]       #different ro values
 
-    return total_points   
+    final_corners = []
+    LoG_table = [] #save LoG(x, sigma_i)
+    
+    #compute LoG(x, sigma_i)
+    for i in range(N):
+        _, _, LoG = create_filters(sigma_vector[i])
+        result = cv2.filter2D(I_float, cv2.CV_64F, LoG)
+        LoG_table.append(np.abs(result) * (sigma_vector[i]**2))
+
+    for i in range(N):
+        #2.2.1
+        kp_data = CornersDetect(I=I_gray, sigma=sigma_vector[i], ro=ro_vector[i], k=k, theta_corn=theta_corn)
+        #2.2.2
+        for x, y, sigma in kp_data:
+            current_val = LoG_table[i][int(round(y)), int(round(x))]
+            next_val = LoG_table[i+1][int(round(y)), int(round(x))] if i+1<N else -1
+            prev_val = LoG_table[i-1][int(round(y)), int(round(x))] if i-1>-1 else -1
+
+            if current_val>next_val and current_val>prev_val:
+                final_corners.append([x,y,sigma])
+       
+    return np.array(final_corners)
