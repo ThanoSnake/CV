@@ -50,3 +50,27 @@
 
 \subsection*{Συγκριτική Σύνοψη}
 Ο \textbf{Τοπικός HOG} πλεονεκτεί στην ταύτιση άκαμπτων δομών με σταθερό προσανατολισμό, κωδικοποιώντας την απόλυτη χωρική διάταξη των ακμών με μεγάλη ακρίβεια, θυσιάζοντας όμως την ανεξαρτησία περιστροφής. Αντίθετα, ο \textbf{SURF} είναι η βέλτιστη επιλογή για αντιστοίχιση εικόνων (Image Registration) υπό ελεύθερες συνθήκες λήψης (scale/rotation invariance), με την αυστηρή προϋπόθεση ύπαρξης πλούσιας και διακριτής τοπικής υφής.
+
+
+
+
+
+
+
+
+fig, axes = plt.subplots(len(layers_to_show), 3, figsize=(12, 12))
+fig.suptitle(f"Feature Maps for: {title}", fontsize=16)
+
+
+for j in range(3): # Εμφάνιση των πρώτων 3 καναλιών
+            # Παίρνουμε το j-οστό κανάλι και το μετατρέπουμε σε numpy
+            channel_img = f_map[0, j].cpu().numpy()
+            
+            axes[i, j].imshow(channel_img, cmap='gray')
+            axes[i, j].set_title(f"{layer_name} | Channel {j}")
+            axes[i, j].axis('off')
+
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.92)
+    plt.show()
+
