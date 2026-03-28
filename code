@@ -58,19 +58,19 @@
 
 
 
-fig, axes = plt.subplots(len(layers_to_show), 3, figsize=(12, 12))
-fig.suptitle(f"Feature Maps for: {title}", fontsize=16)
+
+if loadFile is not None and os.path.exists(loadFile):
+        print(f"Loading features from {loadFile}...")
+        with open(loadFile, 'rb') as f:
+            X_full = pickle.load(f)
+        return X_full
 
 
-for j in range(3): # Εμφάνιση των πρώτων 3 καναλιών
-            # Παίρνουμε το j-οστό κανάλι και το μετατρέπουμε σε numpy
-            channel_img = f_map[0, j].cpu().numpy()
-            
-            axes[i, j].imshow(channel_img, cmap='gray')
-            axes[i, j].set_title(f"{layer_name} | Channel {j}")
-            axes[i, j].axis('off')
 
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.92)
-    plt.show()
 
+
+
+
+if saveFile is not None:
+        with open(saveFile, 'wb') as f:
+            pickle.dump(X_full, f)
