@@ -1,1 +1,25 @@
- η δομη της αναφορας θελω να ειναι η εξης: ο λογος να ειναι αυστηρος και μαθημιτικος χωρις πολλες μεταφορες και παρομοιωσεις. να γινεται αναφορα στην αντιστοιχη θεωρια προκειμενου να ερμηνευονται τα αποτελεσματα, οι ενδιαμεσες απεικονισεις, οι προσδοκιες καθε μεθοδου, τα προτερηματα και οι αδυναμιες των μεθοδων. Σε περιπτωση που αυτα μπορουν να απεικονιστουν και με μαθηματικες σχεσεις τοτε να γινεται και μια συντομη "αποδειξη". αλλα αυτο που με ενδιαφερει περισσοτερο ειναι να ερμηνευονται/σχολιαζονται τα αποτελεσματα που θα βρω εκτελωντας τα βηματα στον κωδικα.
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[LGR,T1]{fontenc}
+\usepackage[greek,english]{babel}
+\usepackage{alphabeta}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage[unicode]{hyperref}
+
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{orange},
+    commentstyle=\color{gray},
+    frame=single,
+    breaklines=true,
+    showstringspaces=false,
+}
