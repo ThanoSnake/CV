@@ -1,40 +1,75 @@
-\section{Μέρος 2: Εντοπισμός Χωρο-χρονικών Σημείων Ενδιαφέροντος και Εξαγωγή Χαρακτηριστικών}
+import numpy as np
+from scipy.ndimage import convolve1d
 
-Στο παρόν τμήμα μελετάται η εξαγωγή χωρο-χρονικών χαρακτηριστικών με απώτερο σκοπό την κατηγοριοποίηση βίντεο που απεικονίζουν ανθρώπινες δράσεις[cite: 1946]. Η διαδικασία βασίζεται στον εντοπισμό τοπικών χαρακτηριστικών μέσω ανιχνευτών (Harris και Gabor) σε περιοχές που παρουσιάζουν έντονες χωροχρονικές μεταβολές, προκειμένου να κατασκευαστεί μια τελική ολική αναπαράσταση (global representation)[cite: 1948, 1949].
-
-\subsection{Εντοπισμός Σημείων Ενδιαφέροντος}
-
-Η ανίχνευση σημείων ενδιαφέροντος απαιτεί τη μεγιστοποίηση μιας συνάρτησης οπτικής σημαντικότητας[cite: 1956, 1957]. Για τον σκοπό αυτό, υλοποιήθηκαν και συγκρίθηκαν δύο διαφορετικοί ανιχνευτές.
-
-\subsubsection{Ανιχνευτής 3D Harris}
-
-Ο ανιχνευτής Harris στοχεύει στον εντοπισμό περιοχών με ισχυρές διακυμάνσεις της έντασης προς πολλαπλές κατευθύνσεις του χωροχρονικού συνεχούς[cite: 1959]. Αυτό επιτυγχάνεται μέσω του τρισδιάστατου δομικού τανυστή $M(x,y,t)$, ο οποίος ορίζεται ως η συνέλιξη ενός γκαουσιανού πυρήνα εξομάλυνσης με το εξωτερικό γινόμενο των χωροχρονικών παραγώγων:
-
-\begin{equation}
-M(x,y,t;\sigma,\tau)=g(x,y,t;s\sigma,s\tau)*\left(\nabla L(x,y,t;\sigma,\tau)(\nabla L(x,y,t;\sigma,\tau))^{T}\right)
-\end{equation} [cite: 1963]
-
-Η συνάρτηση σημαντικότητας (κριτήριο γωνιότητας) αξιολογεί την ιδιοδομή του πίνακα $M$ μέσω της ορίζουσας και του ίχνους του, προκειμένου να αποφευχθεί ο χρονοβόρος υπολογισμός των ιδιοτιμών:
-
-\begin{equation}
-H(x,y,t)=\det(M(x,y,t))-k\cdot \text{trace}^{3}(M(x,y,t))
-\end{equation} [cite: 1969]
-
-Τα σημεία ενδιαφέροντος προκύπτουν ως τα τοπικά μέγιστα της συνάρτησης $H(x,y,t)$[cite: 1978]. Όπως προκύπτει από την εκτέλεση του κώδικα, ο αλγόριθμος Harris εντοπίζει σημεία κυρίως σε περιοχές όπου η κίνηση αλλάζει κατεύθυνση ή δημιουργεί "γωνίες" στον χωροχρόνο. Ενδεικτικά, για τη δράση `handclapping`, ο απλός αλγόριθμος εντόπισε 376 σημεία (για $\sigma=2, \tau=1, s=1$). Ο συγκεκριμένος ανιχνευτής είναι συντηρητικός και εστιάζει αυστηρά σε περιοχές υψηλής χωροχρονικής καμπυλότητας.
-
-\subsubsection{Ανιχνευτής Gabor}
-
-Αντίθετα, ο ανιχνευτής Gabor βασίζεται σε χρονικό φιλτράρισμα με ένα ζεύγος φίλτρων (άρτιο και περιττό), κατόπιν χωρικής γκαουσιανής εξομάλυνσης[cite: 1970]. Τα φίλτρα ορίζονται ως:
-
-\begin{align}
-h_{ev}(t;\tau,\omega) &= \cos(2\pi t\omega)\exp(-t^{2}/2\tau^{2}) \\
-h_{od}(t;\tau,\omega) &= \sin(2\pi t\omega)\exp(-t^{2}/2\tau^{2})
-\end{align} [cite: 1972]
-
-όπου η συχνότητα $\omega$ και η χρονική κλίμακα $\tau$ συνδέονται με τη σχέση $\omega=4/\tau$[cite: 1974]. Το κριτήριο σημαντικότητας ορίζεται ως η τετραγωνική ενέργεια της εξόδου:
-
-\begin{equation}
-H(x,y,t)=(I(x,y,t)*g*h_{ev})^{2}+(I(x,y,t)*g*h_{od})^{2}
-\end{equation} [cite: 1976]
-
-Βάσει των πειραματικών αποτελεσμάτων, ο ανιχνευτής Gabor είναι αισθητά πιο "πληθωρικός". Για την ίδια δράση (`handclapping`), εντόπισε 676 σημεία, ενώ στη δράση `walking` ο αριθμός έφτασε τα 1811 σημεία. Η παρατήρηση αυτή επιβεβαιώνει τη θεωρητική προσδοκία: το φίλτρο Gabor ανταποκρίνεται εντονότερα σε περιοδικές χρονικές μεταβολές (π.χ. περιοδική κίνηση χεριών ή ποδιών) και ευρύτερες περιοχές κίνησης, έναντι του Harris που απαιτεί αυστηρά χωροχρονικές γωνίες (απότομες ασυνέχειες).
+def multiscale_gabor_laplace(video, sigma_0=4, taph_0=1.5, scale_step=np.sqrt(2), N=4, method='Local-Maxima'):
+    """
+    Multiscale Gabor-Laplace: 
+    Χρησιμοποιεί φίλτρα Gabor για χωροχρονικό εντοπισμό και το LoG για επιλογή κλίμακας.
+    """
+    # Δημιουργία των διανυσμάτων κλίμακας
+    sigma_vector = [sigma_0 * (scale_step**i) for i in range(N)]
+    taph_vector = [taph_0 * (scale_step**i) for i in range(N)]
+    
+    # Λίστα για αποθήκευση των Scale-Normalized LoG 
+    LoG_table = []
+    
+    # Πυρήνας 2ης παραγώγου για τον υπολογισμό της Λαπλασιανής
+    laplacian_kernel = np.array([1, -2, 1])
+    
+    print("--- Υπολογισμός LoG Scale-Space ---")
+    for i in range(N):
+        sigma = sigma_vector[i]
+        taph = taph_vector[i]
+        
+        # 1. Εξομάλυνση στην τρέχουσα κλίμακα
+        L = apply_3d_gaussian_filter(video, sigma, sigma, taph)
+        
+        # 2. Υπολογισμός 2ων παραγώγων στους 3 άξονες
+        Lxx = convolve1d(input=L, weights=laplacian_kernel, axis=1)
+        Lyy = convolve1d(input=L, weights=laplacian_kernel, axis=0)
+        Ltt = convolve1d(input=L, weights=laplacian_kernel, axis=2)
+        
+        # 3. Υπολογισμός Scale-Normalized 3D LoG: σ^2(Lxx + Lyy) + τ^2(Ltt)
+        LoG = np.abs((sigma**2) * (Lxx + Lyy) + (taph**2) * Ltt)
+        LoG_table.append(LoG)
+        
+    final_points = []
+    
+    print("\n--- Εντοπισμός Gabor & Επιλογή Κλίμακας LoG ---")
+    for i in range(N):
+        print(f"Επεξεργασία κλίμακας {i+1}/{N} (sigma={sigma_vector[i]:.2f}, taph={taph_vector[i]:.2f})")
+        
+        # Κλήση της δικής σου συνάρτησης Gabor μονής κλίμακας
+        candidates = gabor_detector(
+            video=video, 
+            sigma=sigma_vector[i], 
+            taph=taph_vector[i], 
+            method=method, 
+            plot_H=False
+        )
+        
+        # Έλεγχος των υποψήφιων σημείων στον άξονα της κλίμακας (LoG)
+        for pt in candidates:
+            x, y, t = int(round(pt[0])), int(round(pt[1])), int(round(pt[2]))
+            
+            # Ασφαλής έλεγχος ορίων του βίντεο
+            if (y >= video.shape[0] or x >= video.shape[1] or t >= video.shape[2] or
+                y < 0 or x < 0 or t < 0):
+                continue
+            
+            # Τιμή LoG του σημείου στην τρέχουσα κλίμακα
+            current_LoG = LoG_table[i][y, x, t]
+            
+            # Τιμές LoG στην προηγούμενη και επόμενη κλίμακα
+            next_LoG = LoG_table[i+1][y, x, t] if i + 1 < N else -1
+            prev_LoG = LoG_table[i-1][y, x, t] if i - 1 > -1 else -1
+            
+            # Scale Selection: Αν είναι τοπικό μέγιστο κατά μήκος του άξονα της κλίμακας
+            if current_LoG > next_LoG and current_LoG > prev_LoG:
+                # Αποθηκεύουμε [x, y, t] μαζί με τις κλίμακες εντοπισμού
+                final_points.append([x, y, t, sigma_vector[i], taph_vector[i]])
+                
+    final_array = np.array(final_points)
+    print(f"\nΣυνολικά βρέθηκαν {final_array.shape[0]} πολυ-κλιμακωτά σημεία (Gabor-Laplace).")
+    
+    return final_array
