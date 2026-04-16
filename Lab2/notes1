@@ -1,10 +1,10 @@
 import numpy as np
 from scipy.ndimage import convolve1d
 
-def multiscale_gabor_laplace(video, sigma_0=4, taph_0=1.5, scale_step=np.sqrt(2), N=4, method='Local-Maxima'):
+def multiscale_harris_laplace(video, sigma_0=4, taph_0=1.5, scale_step=np.sqrt(2), N=4, s_int=2, k=0.005, method='Local-Maxima'):
     """
-    Multiscale Gabor-Laplace: 
-    Χρησιμοποιεί φίλτρα Gabor για χωροχρονικό εντοπισμό και το LoG για επιλογή κλίμακας.
+    Multiscale 3D Harris-Laplace: 
+    Χρησιμοποιεί τον Harris για χωροχρονικό εντοπισμό και το LoG για επιλογή κλίμακας.
     """
     # Δημιουργία των διανυσμάτων κλίμακας
     sigma_vector = [sigma_0 * (scale_step**i) for i in range(N)]
@@ -30,20 +30,24 @@ def multiscale_gabor_laplace(video, sigma_0=4, taph_0=1.5, scale_step=np.sqrt(2)
         Ltt = convolve1d(input=L, weights=laplacian_kernel, axis=2)
         
         # 3. Υπολογισμός Scale-Normalized 3D LoG: σ^2(Lxx + Lyy) + τ^2(Ltt)
+        # Παίρνουμε την απόλυτη τιμή γιατί μας ενδιαφέρει το μέγεθος της απόκρισης
         LoG = np.abs((sigma**2) * (Lxx + Lyy) + (taph**2) * Ltt)
         LoG_table.append(LoG)
         
     final_points = []
     
-    print("\n--- Εντοπισμός Gabor & Επιλογή Κλίμακας LoG ---")
+    print("\n--- Εντοπισμός Harris & Επιλογή Κλίμακας LoG ---")
     for i in range(N):
         print(f"Επεξεργασία κλίμακας {i+1}/{N} (sigma={sigma_vector[i]:.2f}, taph={taph_vector[i]:.2f})")
         
-        # Κλήση της δικής σου συνάρτησης Gabor μονής κλίμακας
-        candidates = gabor_detector(
+        # Κλήση της συνάρτησης μονής κλίμακας που έδωσες 
+        # (Σημείωση: περνάμε το s_int στο όρισμα 's' της δικής σου συνάρτησης)
+        candidates = harris_stephens(
             video=video, 
             sigma=sigma_vector[i], 
             taph=taph_vector[i], 
+            s=s_int, 
+            k=k, 
             method=method, 
             plot_H=False
         )
@@ -70,6 +74,6 @@ def multiscale_gabor_laplace(video, sigma_0=4, taph_0=1.5, scale_step=np.sqrt(2)
                 final_points.append([x, y, t, sigma_vector[i], taph_vector[i]])
                 
     final_array = np.array(final_points)
-    print(f"\nΣυνολικά βρέθηκαν {final_array.shape[0]} πολυ-κλιμακωτά σημεία (Gabor-Laplace).")
+    print(f"\nΣυνολικά βρέθηκαν {final_array.shape[0]} πολυ-κλιμακωτά σημεία (Harris-Laplace).")
     
     return final_array
